@@ -1,0 +1,51 @@
+add_action( 'woocommerce_product_options_pricing', 'custom_add_hsn_to_products' );
+             function custom_add_hsn_to_products() {
+                 woocommerce_wp_text_input( array(
+                           'id' => 'hsn_code',
+                           'placeholder' => __( 'Enter 8-digit HSN No. here', 'woocommerce' ),
+                           'class' => 'short wc_input_price',
+                           'label' => __( 'HSN Code', 'woocommerce' ),
+		    ));
+		}
+add_action( 'save_post_product', 'custom_save_hsn' );
+		function custom_save_hsn( $product_id ) {
+		    global $pagenow, $typenow;
+		    if ( 'post.php' !== $pagenow || 'product' !== $typenow ) return;
+		    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+		    if ( isset( $_POST['hsn_code'] ) ) {
+		    if ( $_POST['hsn_code'] )
+		        update_post_meta( $product_id, 'hsn_code', $_POST['hsn_code'] );
+                  } else delete_post_meta( $product_id, 'hsn_code' );
+		}
+add_action( 'woocommerce_variation_options_pricing', 'custom_add_hsn_to_variations', 10, 3 );
+		function custom_add_hsn_to_variations( $loop,
+		$variation_data, $variation ) {
+		   woocommerce_wp_text_input( array(
+		'id' => 'hsn_code[' . $loop . ']',
+		'placeholder' => __( 'Enter 8-digit HSN No. here', 'woocommerce' ),
+		'class' => 'short',
+		'label' => __( 'HSN Code', 'woocommerce' ),
+		'value' => get_post_meta( $variation->ID, 'hsn_code', true )
+		   ) );
+		}
+add_action( 'woocommerce_save_product_variation', 'custom_save_hsn_variations', 10, 2 );
+		function custom_save_hsn_variations( $variation_id, $i ) {
+		   $hsn_code = $_POST['hsn_code'][$i];
+		   if ( isset( $hsn_code ) ) update_post_meta
+                   ( $variation_id, 'hsn_code', esc_attr( $hsn_code ) );
+		}
+add_filter( 'woocommerce_available_variation', 'custom_add_hsn_variation_data' );
+		function custom_add_hsn_variation_data( $variations ) {
+		   $variations['hsn_code'] = '<div class="woocommerce_custom_field">Custom Field: <span>' . get_post_meta( $variations[ 'variation_id' ], 'hsn_code', true ) . '</span></div>';
+		   return $variations;
+		}
+
+
+add_action( 'wpo_wcpdf_after_item_meta', function( $document_type, $item, $order ) {
+	if ( ! empty( $item ) && ! empty( $item['product'] ) && $document_type == 'invoice' ) {
+		$hsn_code = $item['product']->get_meta( 'hsn_code' );
+		if ( ! empty( $hsn_code ) ) {
+			echo '<div class="hsn-code">HSN code: '.sanitize_text_field( $hsn_code ).'</div>';
+		}
+	}
+}, 10, 3 );
